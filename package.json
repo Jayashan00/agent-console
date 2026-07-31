@@ -2,6 +2,7 @@
   "name": "heva-agent-console",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Agent Console — an AI agent interface with live tool visualisation, interruption and replay.",
   "author": "Jayashan Nawarathne",
   "license": "UNLICENSED",

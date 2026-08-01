@@ -10,19 +10,59 @@ import { config, hasLlm, providerLabel } from '../config.js';
  */
 
 export class LlmError extends Error {
-  constructor(message, { status = 0, retriable = false } = {}) {
+  constructor(message, { status = 0, retriable = false, retryAfterMs = null } = {}) {
     super(message);
     this.name = 'LlmError';
     this.status = status;
     this.retriable = retriable;
+    /** Honour the provider's own Retry-After when it sends one. */
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
-export async function streamCompletion({ system, messages, onDelta, maxTokens, signal, temperature = 0.2 }) {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Retries a rate-limited or transient model failure before the run degrades.
+ *
+ * The important subtlety: a retry is only safe if nothing has been streamed to
+ * the user yet. Once a single token has reached the browser, re-running the
+ * call would duplicate reasoning mid-sentence, so a mid-stream failure is
+ * surfaced immediately instead. Free provider tiers rate-limit constantly, and
+ * an honest short pause is far better than degrading a run that would have
+ * succeeded two seconds later.
+ */
+export async function streamCompletion(options) {
   if (!hasLlm()) throw new LlmError('No model key is configured.', { retriable: false });
-  return config.provider === 'openai'
-    ? streamOpenAiCompatible({ system, messages, onDelta, maxTokens, signal, temperature })
-    : streamAnthropic({ system, messages, onDelta, maxTokens, signal, temperature });
+  const call = config.provider === 'openai' ? streamOpenAiCompatible : streamAnthropic;
+
+  let lastError;
+  for (let attempt = 0; attempt <= config.llmMaxRetries; attempt++) {
+    let streamed = false;
+    try {
+      return await call({
+        ...options,
+        onDelta: (delta) => {
+          streamed = true;
+          options.onDelta?.(delta);
+        },
+      });
+    } catch (err) {
+      lastError = err;
+      const canRetry =
+        err instanceof LlmError &&
+        err.retriable &&
+        !streamed &&
+        !options.signal?.aborted &&
+        attempt < config.llmMaxRetries;
+      if (!canRetry) throw err;
+
+      const wait = Math.min(err.retryAfterMs ?? 800 * 2 ** attempt, config.llmRetryCapMs);
+      options.onRetry?.({ attempt: attempt + 1, waitMs: wait, reason: err.message });
+      await sleep(wait);
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -60,9 +100,12 @@ async function readSse(res, onPayload) {
 
 async function failure(res, label) {
   const detail = await res.text().catch(() => '');
+  const header = res.headers.get('retry-after');
+  const seconds = header ? Number.parseFloat(header) : NaN;
   return new LlmError(`${label} request failed (HTTP ${res.status}). ${detail.slice(0, 400)}`, {
     status: res.status,
     retriable: res.status === 429 || res.status >= 500,
+    retryAfterMs: Number.isFinite(seconds) ? Math.round(seconds * 1000) : null,
   });
 }
 

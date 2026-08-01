@@ -38,6 +38,12 @@ export function toolsPromptSpec() {
         const bits = [`${name}: ${spec.type}`];
         if (!spec.required) bits.push(`optional, default ${JSON.stringify(spec.default)}`);
         if (spec.enum) bits.push(`one of ${spec.enum.join('|')}`);
+        // Ranges belong in the prompt: a model that cannot see the ceiling will
+        // eventually ask for a value above it and waste a turn on a rejection.
+        if (spec.min !== undefined || spec.max !== undefined) {
+          bits.push(`allowed range ${spec.min ?? 0} to ${spec.max}`);
+        }
+        if (spec.maxLength !== undefined) bits.push(`max ${spec.maxLength} characters`);
         return `    - ${bits.join(', ')} — ${spec.description}`;
       })
       .join('\n');

@@ -69,6 +69,11 @@ export const config = {
   workspaceDir: process.env.WORKSPACE_DIR || path.join(ROOT, 'data', 'workspace'),
   webDist: process.env.WEB_DIST || path.join(ROOT, 'web', 'dist'),
 
+  llmMaxRetries: int(process.env.LLM_MAX_RETRIES, 2),
+  llmRetryCapMs: int(process.env.LLM_RETRY_CAP_MS, 15000),
+  observationChars: int(process.env.AGENT_OBSERVATION_CHARS, 1100),
+  maxObservations: int(process.env.AGENT_MAX_OBSERVATIONS, 8),
+
   maxSteps: int(process.env.AGENT_MAX_STEPS, 12),
   maxToolCallsPerStep: int(process.env.AGENT_MAX_TOOL_CALLS_PER_STEP, 3),
   toolTimeoutMs: int(process.env.TOOL_TIMEOUT_MS, 20000),

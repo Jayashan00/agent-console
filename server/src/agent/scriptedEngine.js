@@ -93,6 +93,31 @@ const observationsForStep = (ctx, index) => ctx.observations.filter((o) => o.kin
 const firstOutput = (ctx, kindTool) =>
   ctx.observations.find((o) => o.kind === 'tool' && o.ok && o.tool === kindTool)?.output ?? null;
 
+/**
+ * When the model dies mid-run, the remaining steps were written by *it*, not by
+ * this engine, so they carry no script. Rather than shrug at them, map the
+ * step's declared tool onto the equivalent scripted action — a degraded run
+ * should still do the work the plan asked for.
+ */
+function inferScript(step, ctx) {
+  switch (step?.tool) {
+    case 'web_search':
+      return { kind: 'search', query: keywords(ctx.goal) };
+    case 'fetch_url':
+      return { kind: 'fetch' };
+    case 'run_javascript':
+      return { kind: 'stats' };
+    case 'write_file':
+      return { kind: 'notes' };
+    case 'get_weather': {
+      const place = ctx.goal.match(PLACE_HINT)?.[1];
+      return place ? { kind: 'weather', location: place } : null;
+    }
+    default:
+      return null;
+  }
+}
+
 export const scriptedEngine = {
   name: 'scripted',
   label: 'Scripted engine (no API key configured)',
@@ -108,7 +133,7 @@ export const scriptedEngine = {
 
   async decide(ctx) {
     const step = ctx.plan[ctx.currentStepIndex];
-    const script = step?.script;
+    const script = step?.script ?? inferScript(step, ctx);
     const done = observationsForStep(ctx, ctx.currentStepIndex);
 
     if (ctx.instructions.length) {
@@ -116,8 +141,12 @@ export const scriptedEngine = {
     }
 
     if (!script) {
-      await streamWords(ctx, 'reasoning', 'This step was added or edited by you, so there is no scripted tool for it. Recording it and moving on.');
-      return { type: 'complete', summary: 'User-authored step acknowledged.' };
+      await streamWords(
+        ctx,
+        'reasoning',
+        'This step names no tool I can carry out on my own, so there is nothing real to execute here. Recording that honestly and moving on rather than pretending it was done.',
+      );
+      return { type: 'complete', summary: 'No executable tool for this step.' };
     }
 
     if (done.length) {

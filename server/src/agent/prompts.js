@@ -1,5 +1,6 @@
 import { toolsPromptSpec } from '../tools/index.js';
 import { truncate } from '../tools/toolkit.js';
+import { config } from '../config.js';
 
 const PROTOCOL = `You speak in a strict tagged protocol. Never write anything outside these tags.
 
@@ -76,12 +77,15 @@ export function contextBlock({ goal, plan, currentStepIndex, observations, instr
     })
     .join('\n');
 
+  // Context budget. Every turn re-sends the working memory, so an unbounded
+  // history is the fastest way to hit a provider's tokens-per-minute ceiling —
+  // which is exactly what free tiers meter on.
   const history = observations.length
     ? observations
-        .slice(-14)
+        .slice(-config.maxObservations)
         .map((o) => {
           if (o.kind === 'tool') {
-            return `[step ${o.stepIndex + 1}] ${o.ok ? 'TOOL OK' : 'TOOL FAILED'} ${o.signature}\n${truncate(o.text, 2200)}`;
+            return `[step ${o.stepIndex + 1}] ${o.ok ? 'TOOL OK' : 'TOOL FAILED'} ${o.signature}\n${truncate(o.text, config.observationChars)}`;
           }
           if (o.kind === 'instruction') return `[user instruction] ${o.text}`;
           if (o.kind === 'rollback') return `[user rolled the run back to step ${o.stepIndex + 1}] Everything after that point was discarded.`;

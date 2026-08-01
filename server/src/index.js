@@ -50,6 +50,19 @@ const server = app.listen(config.port, config.host, () => {
   console.log('');
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${config.port} is already in use.`);
+    console.error('  Something else — most likely an earlier copy of this server — is still holding it.\n');
+    console.error('  Windows:  taskkill /F /IM node.exe');
+    console.error('  macOS/Linux:  lsof -ti :' + config.port + ' | xargs kill');
+    console.error(`  Or run on another port:  PORT=8788 npm start\n`);
+    process.exit(1);
+  }
+  console.error('[api] server error:', err);
+  process.exit(1);
+});
+
 const shutdown = async (signal) => {
   console.log(`\n[api] ${signal} received, flushing run data…`);
   server.close();

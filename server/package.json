@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch-path=./src src/index.js",
-    "start": "node src/index.js",
+    "dev": "node init && node --watch-path=./src src/index.js",
+    "start": "node init && node src/index.js",
     "smoke": "node test/smoke.js",
     "test": "node test/providers.js && node test/smoke.js",
     "providers": "node test/providers.js"

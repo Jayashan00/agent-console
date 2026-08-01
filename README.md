@@ -18,13 +18,25 @@ npm run dev     # API on :8787, UI on http://localhost:5173
 
 Open **http://localhost:5173**.
 
-That is the whole setup. **No API key is required to see a complete live run** — see [Two engines](#two-engines) below. For model-driven runs:
+That is the whole setup. **No API key is required to see a complete live run** — see [Two engines](#two-engines) below.
+
+For model-driven runs, copy `.env.example` to `.env` and set **either** provider:
 
 ```bash
-cp .env.example .env
-# put your key in ANTHROPIC_API_KEY
-npm run dev
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+AGENT_MODEL=claude-sonnet-4-5
+
+# …or any OpenAI-compatible endpoint (Groq, Google AI Studio, Cerebras,
+# OpenRouter, local Ollama). Several issue a key without a credit card.
+OPENAI_API_KEY=gsk_...
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+AGENT_MODEL=llama-3.3-70b-versatile
 ```
+
+The agent loop, the tools, the streaming pipeline and every guarantee below are
+identical either way — only the HTTP transport differs, and both are covered by
+`npm run providers --prefix server`.
 
 Production (single origin, one URL):
 
@@ -46,7 +58,7 @@ npm run dev
 Verify the guarantees yourself:
 
 ```bash
-npm run smoke --prefix server
+npm test --prefix server        # transports + full end-to-end
 ```
 
 This boots the real server, drives real runs over the real HTTP API and the real SSE stream, and asserts 22 properties — that reasoning arrives incrementally rather than batched, that every tool call has a matching result, that failures are structured rather than fatal, that **no new step begins while paused**, that an edited plan is actually honoured, that rollback rewinds the trace, and that a past run replays in full.
@@ -57,7 +69,7 @@ This boots the real server, drives real runs over the real HTTP API and the real
 
 | | `llm` | `scripted` |
 |---|---|---|
-| When | `ANTHROPIC_API_KEY` is set | no key set, or the model call fails mid-run |
+| When | a model key is set | no key set, or the model call fails mid-run |
 | Decides what to do | Claude, via a streaming tagged protocol | a deterministic research routine |
 | Tools | real | **the same real tools** |
 | Streaming, pause, rollback, persistence | identical | identical |
@@ -234,7 +246,7 @@ docker build -t agent-console .
 docker run -p 8787:8787 -e ANTHROPIC_API_KEY=sk-… -v $(pwd)/data:/app/data agent-console
 ```
 
-Render: push the repo, pick **Blueprint**, `render.yaml` is already here — free tier, Docker runtime, persistent disk for run history, health check on `/api/health`. Fly.io and Railway both work from the same Dockerfile. The only required environment variable is `ANTHROPIC_API_KEY`, and even that is optional if you are happy with the scripted engine.
+Render: push the repo, pick **Blueprint**, `render.yaml` is already here — free tier, Docker runtime, persistent disk for run history, health check on `/api/health`. Fly.io and Railway both work from the same Dockerfile. The only environment variable worth setting is a model key — `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` — and even that is optional if you are happy with the scripted engine.
 
 ## Constraints honoured
 

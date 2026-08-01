@@ -37,13 +37,32 @@ const int = (value, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+/**
+ * Provider selection.
+ *
+ * Anthropic is the default when a key is present. Any OpenAI-compatible
+ * endpoint works as an alternative — Groq, Google AI Studio, Cerebras,
+ * OpenRouter and most others speak that dialect — so the product can be run
+ * with a free, no-credit-card key. The agent loop, the tools and the streaming
+ * pipeline are identical either way; only the transport differs.
+ */
+const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
+const openaiApiKey = process.env.OPENAI_API_KEY || '';
+const provider =
+  process.env.LLM_PROVIDER || (anthropicApiKey ? 'anthropic' : openaiApiKey ? 'openai' : 'none');
+
+const defaultModel = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'llama-3.3-70b-versatile';
+
 export const config = {
   port: int(process.env.PORT, 8787),
   host: process.env.HOST || '0.0.0.0',
 
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  provider,
+  anthropicApiKey,
   anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
-  model: process.env.AGENT_MODEL || 'claude-sonnet-4-5',
+  openaiApiKey,
+  openaiBaseUrl: process.env.OPENAI_BASE_URL || 'https://api.groq.com/openai/v1',
+  model: process.env.AGENT_MODEL || defaultModel,
   maxTokens: int(process.env.AGENT_MAX_TOKENS, 1400),
 
   dataDir: process.env.DATA_DIR || path.join(ROOT, 'data'),
@@ -56,6 +75,10 @@ export const config = {
   runRetentionDays: int(process.env.RUN_RETENTION_DAYS, 60),
 };
 
-export const hasLlm = () => Boolean(config.anthropicApiKey);
+export const hasLlm = () =>
+  config.provider === 'anthropic' ? Boolean(config.anthropicApiKey) : config.provider === 'openai' ? Boolean(config.openaiApiKey) : false;
 
 export const engineName = () => (hasLlm() ? 'llm' : 'scripted');
+
+export const providerLabel = () =>
+  config.provider === 'anthropic' ? 'Anthropic' : config.provider === 'openai' ? new URL(config.openaiBaseUrl).host : 'none';

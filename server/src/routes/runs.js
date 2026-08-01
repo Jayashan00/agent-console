@@ -4,7 +4,7 @@ import { subscribe } from '../lib/bus.js';
 import { getController } from '../agent/controller.js';
 import { pickEngineName, resumeRun, rollbackRun, startRun } from '../agent/runner.js';
 import { toolCatalogue } from '../tools/index.js';
-import { config, engineName, hasLlm } from '../config.js';
+import { config, engineName, hasLlm, providerLabel } from '../config.js';
 
 export const router = express.Router();
 
@@ -24,6 +24,7 @@ const withControl = (run) => ({
 router.get('/meta', (_req, res) => {
   res.json({
     engine: engineName(),
+    provider: hasLlm() ? providerLabel() : null,
     model: hasLlm() ? config.model : null,
     modelConfigured: hasLlm(),
     tools: toolCatalogue(),

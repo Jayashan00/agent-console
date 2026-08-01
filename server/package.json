@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "node --watch-path=./src src/index.js",
     "start": "node src/index.js",
-    "smoke": "node test/smoke.js"
+    "smoke": "node test/smoke.js",
+    "test": "node test/providers.js && node test/smoke.js",
+    "providers": "node test/providers.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

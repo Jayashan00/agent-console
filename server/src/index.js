@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
-import { config, engineName, hasLlm } from './config.js';
+import { config, engineName, hasLlm, providerLabel } from './config.js';
 import { router } from './routes/runs.js';
 import * as store from './lib/store.js';
 
@@ -42,7 +42,9 @@ const server = app.listen(config.port, config.host, () => {
   console.log('');
   console.log('  Agent Console');
   console.log(`  API           http://localhost:${config.port}`);
-  console.log(`  Engine        ${engineName()}${hasLlm() ? ` (${config.model})` : ' — set ANTHROPIC_API_KEY for model-driven runs'}`);
+  console.log(
+    `  Engine        ${engineName()}${hasLlm() ? ` — ${config.model} via ${providerLabel()}` : ' — set ANTHROPIC_API_KEY or OPENAI_API_KEY for model-driven runs'}`,
+  );
   console.log(`  Data          ${config.dataDir}`);
   console.log(`  Frontend      ${fs.existsSync(config.webDist) ? 'served from ' + config.webDist : 'not built (use http://localhost:5173 in dev)'}`);
   console.log('');

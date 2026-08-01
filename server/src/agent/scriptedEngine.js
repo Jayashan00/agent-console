@@ -220,7 +220,9 @@ export const scriptedEngine = {
         ? `- ${failures.length} tool call(s) failed during this run: ${failures.map((f) => f.errorMessage).join('; ')}`
         : '- No tool call failed during this run.',
     );
-    lines.push('- Produced by the scripted engine. Set ANTHROPIC_API_KEY for model-written synthesis over the same tool results.');
+    lines.push(
+      '- Produced by the scripted engine. Set a model key (ANTHROPIC_API_KEY, or OPENAI_API_KEY with OPENAI_BASE_URL) for model-written synthesis over the same tool results. If a key is configured and you are still reading this line, the model call failed and the run degraded — the reason is in the execution trace.',
+    );
 
     const markdown = lines.join('\n');
     await streamWords(ctx, 'deliverable', markdown, 4);

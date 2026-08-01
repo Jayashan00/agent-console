@@ -2,24 +2,44 @@
 /**
  * Runs the API (port 8787) and the Vite dev server (port 5173) side by side.
  * Written by hand so the project needs no process-runner dependency.
+ *
+ * Note on Windows: npm is `npm.cmd`, and Node 20.12+ refuses to spawn .cmd
+ * files without a shell (EINVAL). Hence `shell: true` on win32.
  */
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const isWindows = process.platform === 'win32';
+const npm = isWindows ? 'npm.cmd' : 'npm';
 
 const targets = [
   { name: 'api', color: '\u001b[36m', cwd: path.join(root, 'server') },
   { name: 'web', color: '\u001b[35m', cwd: path.join(root, 'web') },
 ];
 
+for (const t of targets) {
+  if (!existsSync(path.join(t.cwd, 'node_modules'))) {
+    console.error(`\nDependencies are missing in /${path.basename(t.cwd)}.`);
+    console.error('Run this first:\n');
+    console.error('  npm install --prefix server');
+    console.error('  npm install --prefix web\n');
+    process.exit(1);
+  }
+}
+
 const children = [];
 let shuttingDown = false;
 
 for (const t of targets) {
-  const child = spawn(npm, ['run', 'dev'], { cwd: t.cwd, env: process.env });
+  const child = spawn(npm, ['run', 'dev'], {
+    cwd: t.cwd,
+    env: process.env,
+    shell: isWindows,
+    windowsHide: true,
+  });
   children.push(child);
 
   const prefix = `${t.color}[${t.name}]\u001b[0m `;
@@ -34,6 +54,11 @@ for (const t of targets) {
   };
   pipe(child.stdout, process.stdout);
   pipe(child.stderr, process.stderr);
+
+  child.on('error', (err) => {
+    console.error(`${prefix}failed to start: ${err.message}`);
+    shutdown(1);
+  });
 
   child.on('exit', (code) => {
     if (shuttingDown) return;

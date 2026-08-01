@@ -33,6 +33,16 @@ npm run build   # builds the frontend
 npm start       # serves the API and the built UI on :8787
 ```
 
+### Windows
+
+Everything above works in PowerShell as-is. If `npm install` reports that it could not install a workspace automatically, run the two commands it prints:
+
+```powershell
+npm install --prefix server
+npm install --prefix web
+npm run dev
+```
+
 Verify the guarantees yourself:
 
 ```bash

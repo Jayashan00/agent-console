@@ -25,21 +25,30 @@ async function streamWords(ctx, channel, text, delayMs = 18) {
   }
 }
 
-const stripFiller = (goal) =>
-  goal
-    .replace(/^\s*(please\s+)?(can you\s+)?(help me\s+)?/i, '')
-    .replace(/\b(research|find out|tell me|look up|give me|write|about|the|a|an)\b/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+const STOP = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'can', 'compare', 'differ', 'do', 'does', 'for', 'from',
+  'give', 'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'one', 'or', 'product', 'recommend', 'should', 'so',
+  'that', 'the', 'their', 'them', 'then', 'this', 'to', 'up', 'us', 'was', 'what', 'when', 'which', 'why', 'with',
+  'write', 'you', 'your', 'research', 'find', 'out', 'tell', 'look', 'about', 'please', 'help',
+]);
+
+/** Search providers answer keywords, not sentences — reduce the goal to its distinctive terms. */
+const keywords = (goal) => {
+  const words = String(goal)
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .split(/\s+/)
+    .filter((word) => word && !STOP.has(word.toLowerCase()));
+  return words.slice(0, 6).join(' ') || goal.slice(0, 60);
+};
 
 function buildPlan(goal) {
-  const topic = stripFiller(goal) || goal;
+  const topic = keywords(goal);
   const wantsWeather = /weather|forecast|temperature|rain/i.test(goal);
   const place = goal.match(PLACE_HINT)?.[1];
 
   const steps = [
     {
-      title: `Search the web for "${topic.slice(0, 60)}"`,
+      title: `Search the web for "${topic}"`,
       detail: 'Gather candidate sources and snippets from two search providers.',
       tool: 'web_search',
       script: { kind: 'search', query: topic },

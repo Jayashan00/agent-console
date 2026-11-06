@@ -11,11 +11,11 @@
   },
   "scripts": {
     "setup": "npm install --prefix server && npm install --prefix web",
-    "dev": "node init && node scripts/dev.js",
-    "dev:server": "node init && npm run dev --prefix server",
-    "dev:web": "node init && npm run dev --prefix web",
-    "build": "node init && npm install --prefix web && npm run build --prefix web",
-    "start": "node init && npm start --prefix server",
+    "dev": "node scripts/dev.js",
+    "dev:server": "npm run dev --prefix server",
+    "dev:web": "npm run dev --prefix web",
+    "build": "npm install --prefix web && npm run build --prefix web",
+    "start": "npm start --prefix server",
     "postinstall": "node scripts/postinstall.js"
   }
 }
